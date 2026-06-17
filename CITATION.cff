@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: SolarPowerRoofTopPotential
+message: >-
+  If you use this software in research, please cite it using
+  the metadata below.
+type: software
+authors:
+  - family-names: Shawky
+    given-names: Karim
+    affiliation: "Institute of Networked Energy Systems, DLR"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+abstract: >-
+  A tool to calculate rooftop solar thermal and photovoltaic potential
+  based on ERA5 weather data and open-source geodata (built-up rasters
+  or LoD2 building models). Includes sensitivity analysis and oemof
+  energy system optimization integration.
+repository-code: "https://github.com/k Shawky/SolarPowerRoofTopPotential"
+license: MIT
+keywords:
+  - solar energy
+  - rooftop PV
+  - solar thermal
+  - heat pumps
+  - energy potential
+  - atlite
+  - oemof
