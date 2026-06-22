@@ -7,14 +7,14 @@ type: software
 authors:
   - family-names: Shawky
     given-names: Karim
-    affiliation: "Institute of Networked Energy Systems, DLR"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
+    affiliation: "Hermann-Rietschel-Institut, TU Berlin, "
+    orcid: "https://orcid.org/0009-0008-4304-2936"
 abstract: >-
   A tool to calculate rooftop solar thermal and photovoltaic potential
   based on ERA5 weather data and open-source geodata (built-up rasters
   or LoD2 building models). Includes sensitivity analysis and oemof
   energy system optimization integration.
-repository-code: "https://github.com/k Shawky/SolarPowerRoofTopPotential"
+repository-code: "https://github.com/KarimHShawky/SolarPowerRoofTopPotential"
 license: MIT
 keywords:
   - solar energy
