@@ -1,8 +1,11 @@
-import pandas as pd
-import geopandas as gpd
-import atlite
+import logging
+from pathlib import Path
 
-DATA_DIR = "../data"
+import atlite
+import geopandas as gpd
+import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def load_shape(path):
@@ -10,7 +13,7 @@ def load_shape(path):
 
     Parameters
     ----------
-    path : str
+    path : str or Path
         Path to the .gpkg file.
 
     Returns
@@ -18,6 +21,9 @@ def load_shape(path):
     GeoDataFrame
         Region boundary in EPSG:3035.
     """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Shapefile not found: {path}")
     return gpd.read_file(path).to_crs(3035)
 
 
@@ -28,7 +34,7 @@ def load_nuts(path):
 
     Parameters
     ----------
-    path : str
+    path : str or Path
         Path to the NUTS GeoJSON file.
 
     Returns
@@ -36,21 +42,25 @@ def load_nuts(path):
     GeoDataFrame
         NUTS regions in EPSG:3035.
     """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"NUTS file not found: {path}")
     return gpd.read_file(path).to_crs(3035)
 
 
 def load_demand(path, year=2014):
     """Load hourly heat demand CSV, convert timestamps, return series in MW.
 
-    The CSV uses Unix-epoch offsets relative to *year*. The last 4 rows
-    (partial data) are dropped and values are converted from kW to MW.
+    The CSV uses sequential hour offsets from the start of *year*.
+    The last 4 rows (partial data) are dropped and values are converted
+    from kW to MW.
 
     Parameters
     ----------
-    path : str
+    path : str or Path
         Path to the demand CSV.
     year : int
-        Reference year for timestamp conversion (default 2014).
+        Reference year for timestamp construction (default 2014).
 
     Returns
     -------
@@ -59,12 +69,35 @@ def load_demand(path, year=2014):
     sph : pd.Series
         Space heating demand in MW.
     """
-    load = pd.read_csv(path)
-    seconds_offset = (year - 1970) * 365.25 * 24 * 3600
-    load.iloc[:, 0] = pd.to_datetime(load.iloc[:, 0] + seconds_offset, unit="s")
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Demand file not found: {path}")
+
+    try:
+        load = pd.read_csv(path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to read demand CSV {path}: {e}")
+
+    if load.shape[1] < 3:
+        raise ValueError(
+            f"Expected at least 3 columns in demand CSV, got {load.shape[1]}"
+        )
+
     load = load.drop(load.tail(4).index)
-    load = load.set_index(load.columns[0])
+    load.index = pd.date_range(
+        start=f"{year}-01-01", periods=len(load), freq="h"
+    )
+    load = load.drop(columns=[load.columns[0]])
     load = load.apply(pd.to_numeric, errors="coerce")
+
+    expected_cols = ["ABS III_Q_flow_dhw/kW", "ABS III_Q_flow_sph/kW"]
+    missing = [c for c in expected_cols if c not in load.columns]
+    if missing:
+        raise KeyError(
+            f"Missing expected columns in demand CSV: {missing}. "
+            f"Available columns: {list(load.columns)}"
+        )
+
     dhw = load["ABS III_Q_flow_dhw/kW"].copy()
     sph = load["ABS III_Q_flow_sph/kW"].copy()
     dhw[:] /= 1000
@@ -77,21 +110,34 @@ def load_cop(path, year=2014):
 
     Parameters
     ----------
-    path : str
+    path : str or Path
         Path to the COP Excel file.
     year : int
-        Reference year for timestamp conversion (default 2014).
+        Reference year for timestamp construction (default 2014).
 
     Returns
     -------
     pd.Series
         Hourly COP values (WP_L column) with datetime index.
     """
-    cop = pd.read_excel(path)
-    hours_offset = (year - 1970) * 365.25 * 24
-    cop.iloc[:, 0] = pd.to_datetime(cop.iloc[:, 0] + hours_offset, unit="h")
-    cop = cop.set_index(cop.columns[0])
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"COP file not found: {path}")
+
+    try:
+        cop = pd.read_excel(path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to read COP Excel {path}: {e}")
+
+    if "WP_L" not in cop.columns:
+        raise KeyError(
+            f"Expected 'WP_L' column. Available columns: {list(cop.columns)}"
+        )
+
     cop.drop(cop.tail(2).index, inplace=True)
+    cop.index = pd.date_range(
+        start=f"{year}-01-01", periods=len(cop), freq="h"
+    )
     return cop["WP_L"]
 
 
@@ -103,7 +149,7 @@ def load_cutout(path, x_slice, y_slice, year=2014):
 
     Parameters
     ----------
-    path : str
+    path : str or Path
         Path to the .nc cutout file.
     x_slice : slice
         Longitude slice for the region.
@@ -118,7 +164,7 @@ def load_cutout(path, x_slice, y_slice, year=2014):
         Ready-to-use weather cutout.
     """
     return atlite.Cutout(
-        path=path,
+        path=str(path),
         module="era5",
         x=x_slice,
         y=y_slice,

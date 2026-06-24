@@ -1,0 +1,46 @@
+# Solar Rooftop Potential Tool — Configuration
+# Copy to config.yaml and adjust paths for your system.
+
+region:
+  name: "Leeste"
+  shapefile: "data/leeste3035.gpkg"
+  nuts: "data/NUTS_RG_10M_2021_4326.geojson"   # for raster approach extent
+  crs: 3035
+
+data:
+  # Raster approach
+  builtup_raster: "data/IBU_2018_010m_eu_03035_V1_0.tif"
+  # LoD2 approach (comment out if using raster only)
+  lod2_tiles:
+    - "data/lod2_1.gpkg"
+    - "data/lod2_2.gpkg"
+    - "data/lod2_3.gpkg"
+  # Demand & COP
+  demand: "data/Last_240222.csv"
+  cop: "data/COP_WP.xlsx"
+  # Cutout path template ({year} and {region} are substituted)
+  cutout: "data/era5-{year}-{region}.nc"
+
+parameters:
+  year: 2014
+  capacity_density: 19            # MW/km² (use 8 for raster approach)
+  # Solar thermal model: "atlite" (default, linear Henning & Palzer 2014)
+  #                    or "oemof"  (quadratic EN 12975, same as oemof.thermal)
+  st_model: "atlite"
+  # atlite model parameters  (η = c0 - c1 * (T_store - T_amb) / G)
+  st_c0: 0.8          # optical efficiency at zero loss
+  st_c1: 3.0          # heat loss coefficient (W/m²K)
+  st_t_store: 80      # storage temperature (°C)
+  st_pv_power_density: 200  # W/m², PV panel density for area-from-capacity conversion
+  # oemof model parameters  (η = η0 - a1*ΔT/G - a2*ΔT²/G, EN 12975)
+  # Uncomment when st_model: "oemof":
+  # st_eta_0: 0.73     # optical efficiency
+  # st_a_1: 1.7        # linear loss coefficient (W/m²K)
+  # st_a_2: 0.016      # quadratic loss coefficient (W/m²K²)
+  # st_temp_inlet: 20  # collector inlet temperature (°C)
+  # st_delta_temp_n: 10  # T_mean - T_inlet (K)
+  pv_type: "CdTe"
+  hp_type: "air_source"
+  alpha_values: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+  resolution: 5                   # rasterization resolution in metres
+  buffer: 0.005                   # coordinate buffer in degrees

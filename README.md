@@ -47,13 +47,19 @@ Two analysis approaches are provided (see [Choosing Your Approach](#choosing-you
 
 ## Methodology
 
-**Solar Thermal Potential** — atlite simulates parabolic trough CSP (concentrated solar power) using ERA5 direct normal irradiance. The CSP output is converted to flat-plate solar thermal using an efficiency ratio (25/60), reflecting typical operating temperatures for building-scale solar thermal collectors.
+**Solar Thermal Potential** — Two flat-plate collector models, selectable via `st_model` in the config:
+- `atlite` (default): linear efficiency model (Henning & Palzer 2014) — uses atlite's built-in `cutout.solar_thermal()`
+- `oemof`: quadratic EN 12975 model — same irradiance transposition via atlite, with the European standard efficiency formula
+
+Both models use ERA5 global + diffuse irradiance (not just DNI like CSP) and include temperature-dependent efficiency. Collector area is derived from the PV capacity matrix via `st_pv_power_density` (default 200 W/m²).
 
 **Photovoltaic Potential** — atlite simulates CdTe thin-film PV panels. The raster approach uses latitude-optimal orientation; the LoD2 approach uses the actual average roof slope and azimuth from the building data.
 
 **Heat Pump Integration** — hourly PV generation is multiplied by hourly COP values for air-source heat pumps to obtain the thermal output that can be delivered for space heating.
 
 **Sensitivity Analysis** — the parameter $\alpha$ controls the allocation of roof area between PV ($\alpha$) and solar thermal ($1-\alpha$). For each $\alpha$, we compute load coverage and overproduction. The LoD2 notebook also includes **oemof-based** system cost and CO2 emission results.
+
+All calculations are config-driven via `config.yaml`. See [`config.example.yaml`](config.example.yaml) for all parameters.
 
 See [`docs/methodology.md`](docs/methodology.md) for a detailed walkthrough.
 
@@ -71,8 +77,10 @@ SolarPowerRoofTopPotential/
 ├── pyproject.toml                # Minimal package config
 ├── src/
 │   ├── __init__.py
+│   ├── config.py                 # Configuration loading (YAML)
 │   ├── data_loading.py           # Load shape, demand, COP, weather data
-│   └── lod2_processing.py        # Load & process LoD2 building data
+│   ├── lod2_processing.py        # Load & process LoD2 building data
+│   └── solar_thermal.py          # Flat-plate collector models (atlite / oemof)
 ├── notebooks/
 │   ├── 01_Raster_Approach.ipynb  # Built-up raster approach
 │   └── 02_LoD2_Approach.ipynb    # LoD2 building approach + oemof
@@ -83,7 +91,7 @@ SolarPowerRoofTopPotential/
 │   ├── lod2_1.gpkg / 2 / 3       # LoD2 building tiles
 │   ├── Last_240222.csv           # Hourly heat demand
 │   ├── COP_WP.xlsx               # Heat pump COP values
-│   ├── Irradation.csv            # Extra irradiation data
+│   ├── Irradiation.csv            # Extra irradiation data
 │   └── era5-2014-leeste.nc       # Pre-downloaded ERA5 cutout
 └── docs/
     ├── setup_cds_api.md          # ERA5 / CDS API setup guide
@@ -109,8 +117,11 @@ cd SolarPowerRoofTopPotential
 python -m venv venv
 source venv/bin/activate   # Linux/MacOS
 
-# Install dependencies
+# Install core dependencies
 pip install -r requirements.txt
+
+# (Optional) Install oemof model support for solar thermal
+pip install ".[oemof]"
 ```
 
 ### CDS API (ERA5 Data)
@@ -161,7 +172,13 @@ cop = load_cop("data/COP_WP.xlsx")
 # Build your own analysis pipeline from here
 ```
 
-Calculation logic (atlite calls, CSP → ST conversion, sensitivity analysis) is kept inline in the notebooks rather than in the module, making the methodology fully transparent.
+Solar thermal calculation is provided by `src.solar_thermal.compute_solar_thermal()`. The module supports two collector models (see [Methodology](#methodology)). PV and HP logic and the sensitivity loop are kept in the notebooks.
+
+You can also run from the command line:
+```bash
+solar-tool run --config config.yaml                 # Single run
+solar-tool sweep --config config.yaml --years 2000..2020  # Multi-year sweep
+```
 
 ---
 
