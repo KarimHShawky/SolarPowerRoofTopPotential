@@ -38,11 +38,13 @@ ERA5 reanalysis data provides hourly global, direct, and diffuse irradiance, tem
 
 ### 3.2 Building Footprints
 
-Two approaches identify where solar installations can be placed:
+Three approaches identify where solar installations can be placed:
 
-**Raster approach**: A binary built-up area raster (e.g. Copernicus High Resolution Layer Imperviousness) marks building pixels. atlite's `ExclusionContainer` uses this to determine which grid cells contain buildings.
+**Raster approach** (⚠️ Legacy): A binary built-up area raster (e.g. Copernicus High Resolution Layer Imperviousness) marks building pixels. atlite's `ExclusionContainer` uses this to determine which grid cells contain buildings. Includes roads and parking areas.
 
-**LoD2 approach**: 3D building models provide precise roof geometry. The vector footprints are rasterized to a GeoTIFF, then used with `ExclusionContainer`. Roof slope (`Dachneigung`), azimuth (`Dachorientierung`), and area (`Dachflaeche`) are extracted from the building attributes.
+**LoD2 approach** (Benchmark): 3D building models provide precise roof geometry. The vector footprints are rasterized to a GeoTIFF, then used with `ExclusionContainer`. Roof slope (`Dachneigung`), azimuth (`Dachorientierung`), and area (`Dachflaeche`) are extracted from the building attributes.
+
+**OSM approach** (Recommended fallback): Building footprints from OpenStreetMap are downloaded via `osmnx` or from Geofabrik. Vector footprints are rasterized identically to LoD2. Since OSM lacks roof geometry, a single `footprint_to_roof` parameter maps footprint area to equivalent panel-covered area, calibrated from LoD2 benchmarks.
 
 ### 3.3 Availability Matrix
 
@@ -54,13 +56,21 @@ The capacity matrix converts this to installable power:
 
 $$C_{i,j} = A_{i,j} \cdot \text{Area}_{i,j} \cdot \text{cap\_per\_sqkm}$$
 
-where `cap_per_sqkm` is a capacity density (MW/km²): **8 MW/km²** for the raster approach, **19 MW/km²** for the LoD2 approach (reflecting modern panel efficiency and higher utilization).
+where `cap_per_sqkm` is a capacity density (MW/km²): **8 MW/km²** for the raster approach (calibrated via Solarkataster Diepholz, Shawky 2024), **19 MW/km²** for the LoD2 approach (LoD2-derived after applying a coverage ratio, see below).
+
+For the OSM approach, the same capacity matrix formula applies, but the area refers to OSM building footprint area instead of LoD2 roof area. The calibration uses a `footprint_to_roof` parameter that converts OSM footprint area to an equivalent panel-covered area, derived from the LoD2 benchmark.
+
+The capacity density is not a free parameter. It is derived from the panel power density and an empirically calibrated coverage ratio:
+
+$$\text{cap\_per\_sqkm} = \text{coverage\_ratio} \times p_{\text{pv\_density}}$$
+
+where $\text{coverage\_ratio} = 0.095$ (9.5 %) and $p_{\text{pv\_density}} = 200\ \text{W/m}^2$. This means: for every km² of LoD2 rasterised building area, 0.095 km² (9.5 %) is assumed to be covered by PV panels at 200 W/m² peak density. The 9.5 % bundles the combined effect of setbacks, wiring gaps, non-ideal orientations, and non-installation across the region.
 
 The capacity matrix represents PV nameplate capacity. For solar thermal, the corresponding collector area is recovered from the PV panel power density:
 
 $$A_{\text{coll}} = C \,/\, p_{\text{pv\_density}}$$
 
-where $p_{\text{pv\_density}} = 200\ \text{W/m}^2$ (default, configurable via `st_pv_power_density`). This avoids using the total built-up area (which includes roads and parking lots) by reversing the PV calibration: `cap_per_sqkm` implicitly assumes only ~4% of built-up area is usable roof; dividing by panel density recovers that usable roof fraction.
+where $p_{\text{pv\_density}} = 200\ \text{W/m}^2$ (default, configurable via `st_pv_power_density`). This recovers the *implicit* panel-covered area from the capacity matrix — approximately 3,370 m² for the Leeste LoD2 case and 3,370 m² for the OSM case (via `footprint_to_roof = 0.037`).
 
 ### 3.4 Solar Thermal — Flat-Plate Collector Models
 
@@ -178,15 +188,16 @@ The results are hardcoded in the notebook as numpy arrays.
 
 ## 4. Key Assumptions
 
-| Parameter | Raster Approach | LoD2 Approach |
+| Parameter | Raster Approach (⚠️) | LoD2 Approach | OSM Approach |
 |---|---|---|---|
-| Capacity density | 8 MW/km² | 19 MW/km² |
-| PV panel power density | 200 W/m² (STC, configurable) | 200 W/m² (STC, configurable) |
-| PV orientation | Latitude-optimal | Average roof slope/azimuth |
-| PV panel type | CdTe | CdTe |
-| ST model | atlite (Henning & Palzer) | atlite (Henning & Palzer) |
-| Heat pump type | Air-source | Air-source |
-| Building availability | Statistical (raster) | Geometric (LoD2) |
+| Capacity density | 8 MW/km² | 19 MW/km² | footprint_to_roof × 200 MW/km² (7.4 for Leeste) |
+| PV panel power density | 200 W/m² (STC, configurable) | 200 W/m² (STC, configurable) | 200 W/m² (STC, configurable) |
+| PV orientation | Latitude-optimal | Average roof slope/azimuth | Latitude-optimal |
+| PV panel type | CdTe | CdTe | CdTe |
+| ST model | atlite (Henning & Palzer) | atlite (Henning & Palzer) | atlite (Henning & Palzer) |
+| Heat pump type | Air-source | Air-source | Air-source |
+| Building availability | Statistical (raster) | Geometric (LoD2) | Geographic (OSM footprint → roof) |
+| Area calibration | cap_per_sqkm = 8 | cap_per_sqkm = 19 | footprint_to_roof ≈ 0.037 (Leeste) |
 
 ---
 

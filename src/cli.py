@@ -91,5 +91,17 @@ def sweep(ctx, years):
     click.echo("Sweep pipeline not yet wired up -- coming soon.")
 
 
+@cli.command()
+@click.option("--year", "-y", default=2015, show_default=True,
+              help="ERA5 year (cutout must already exist).")
+def compare_orientation(year):
+    """Compare actual roof orientation vs latitude-optimal.
+
+    Requires an already-downloaded ERA5 cutout at data/era5-{year}-leeste.nc.
+    """
+    from analysis.orientation_comparison import run_comparison
+    run_comparison(year=year)
+
+
 def main():
     cli()

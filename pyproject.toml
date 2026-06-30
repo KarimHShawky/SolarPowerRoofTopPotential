@@ -38,6 +38,9 @@ dev = [
 oemof = [
     "oemof.thermal>=0.0.8",
 ]
+osm = [
+    "osmnx>=2.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["src*"]

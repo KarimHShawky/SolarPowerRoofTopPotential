@@ -36,12 +36,13 @@ This tool computes the potential for rooftop solar thermal and PV-powered heat p
 - **Simulated hourly heat demand** for domestic hot water (DHW) and space heating (SH)
 - **COP values** for air-source heat pumps
 
-Two analysis approaches are provided (see [Choosing Your Approach](#choosing-your-approach)):
+Three analysis approaches are provided (see [Choosing Your Approach](#choosing-your-approach)):
 
 | Notebook | Approach | Data Required |
 |---|---|---|
-| `01_Raster_Approach.ipynb` | Built-up area raster (GeoTIFF) | Land cover / imperviousness raster |
-| `02_LoD2_Approach.ipynb` | LoD2 3D building models | LoD2 building footprints with roof geometry |
+| `01_Raster_Approach.ipynb` ⚠️ | Built-up area raster (GeoTIFF) — **legacy**, kept for reproducibility | Imperviousness raster |
+| `02_LoD2_Approach.ipynb` | LoD2 3D building models — **benchmark** | LoD2 building footprints with roof geometry |
+| `03_OSM_Approach.ipynb` | OSM building footprints — **recommended fallback** | OSM buildings (osmnx / Geofabrik) |
 
 ---
 
@@ -80,10 +81,12 @@ SolarPowerRoofTopPotential/
 │   ├── config.py                 # Configuration loading (YAML)
 │   ├── data_loading.py           # Load shape, demand, COP, weather data
 │   ├── lod2_processing.py        # Load & process LoD2 building data
+│   ├── osm_processing.py         # Download OSM buildings, clip, rasterize
 │   └── solar_thermal.py          # Flat-plate collector models (atlite / oemof)
 ├── notebooks/
 │   ├── 01_Raster_Approach.ipynb  # Built-up raster approach
-│   └── 02_LoD2_Approach.ipynb    # LoD2 building approach + oemof
+│   ├── 02_LoD2_Approach.ipynb    # LoD2 building approach + oemof
+│   └── 03_OSM_Approach.ipynb     # OSM building footprint approach
 ├── data/
 │   ├── leeste3035.gpkg           # Region shape (Leeste, Germany)
 │   ├── NUTS_RG_10M_2021_4326.geojson
@@ -92,10 +95,18 @@ SolarPowerRoofTopPotential/
 │   ├── Last_240222.csv           # Hourly heat demand
 │   ├── COP_WP.xlsx               # Heat pump COP values
 │   ├── Irradiation.csv            # Extra irradiation data
+│   ├── osm_leeste.gpkg           # Pre-downloaded OSM building footprints (280 buildings)
 │   └── era5-2014-leeste.nc       # Pre-downloaded ERA5 cutout
+├── analysis/
+│   ├── multi_year_analysis.py   # 2015–2024 ERA5 sweep script
+│   ├── uncertainty_quantification.py  # MC / LHS sensitivity analysis
+│   ├── validate_cutout_format.py      # Post-download validation
+│   ├── download_tracker.md            # Download status per year
+│   └── results/                       # Saved CSVs and plots
+├── config.example.yaml         # Documented defaults for all parameters
 └── docs/
-    ├── setup_cds_api.md          # ERA5 / CDS API setup guide
-    └── methodology.md            # Detailed methodology
+    ├── setup_cds_api.md         # ERA5 / CDS API setup guide
+    └── methodology.md           # Detailed methodology
 ```
 
 ---
@@ -132,7 +143,7 @@ To download ERA5 weather data, you need a CDS API key:
 2. Retrieve your API key from https://cds.climate.copernicus.eu/api-how-to
 3. Save it to `~/.cdsapirc`:
 
-```
+```yaml
 url: https://cds.climate.copernicus.eu/api/v2
 key: {uid}:{api-key}
 ```
@@ -151,10 +162,11 @@ Run the notebooks from the repository root:
 jupyter notebook notebooks/
 ```
 
-Both notebooks are self-contained tutorials with explanatory markdown. Each cell documents what it does and why. The key difference:
+All three notebooks are self-contained tutorials with explanatory markdown:
 
-- **`01_Raster_Approach.ipynb`** — Start here if you have a land-cover/built-up raster. Simpler setup, works anywhere such data exists.
-- **`02_LoD2_Approach.ipynb`** — Use if you have LoD2 building models with roof geometry. More accurate, includes oemof analysis.
+- **`01_Raster_Approach.ipynb`** ⚠️ Legacy — Land-cover/built-up raster. Includes roads/parking in roof area. Kept for reproducibility
+- **`02_LoD2_Approach.ipynb`** — LoD2 building models with roof geometry (benchmark). Most accurate, includes oemof analysis
+- **`03_OSM_Approach.ipynb`** — OSM building footprints (recommended for broad coverage). Downloads data on demand via `osmnx`
 
 ### As a Python Module
 
@@ -184,14 +196,14 @@ solar-tool sweep --config config.yaml --years 2000..2020  # Multi-year sweep
 
 ## Choosing Your Approach
 
-| Criterion | Raster Approach | LoD2 Approach |
-|---|---|---|
-| **Data needed** | Built-up area raster (GeoTIFF) | LoD2 building models with roof attributes |
-| **PV orientation** | Latitude-optimal (theoretical max) | Actual roof slope & azimuth |
-| **Accuracy** | Good (statistical roof availability) | Better (per-building geometry) |
-| **Complexity** | Low | Medium |
-| **Availability** | Copernicus, USGS, etc. | Germany (ALKIS), Netherlands, Switzerland, some US cities |
-| **Extra features** | — | Average roof params, oemof cost/CO2 analysis |
+| Criterion | LoD2 Approach (benchmark) | OSM Approach (recommended) | Raster Approach (legacy) |
+|---|---|---|---|
+| **Data needed** | LoD2 building models with roof attributes | OSM building footprints (downloaded via osmnx) | Built-up area raster (GeoTIFF) |
+| **PV orientation** | Actual roof slope & azimuth | Latitude-optimal (no roof plane data) | Latitude-optimal (theoretical max) |
+| **Accuracy** | Best (per-building geometry) | Good (footprint-to-roof correction) | Moderate (imperviousness includes roads) |
+| **Complexity** | Medium | Low | Low |
+| **Availability** | Germany, NL, CH, some US cities | **Global** (OSM coverage) | Copernicus, USGS, etc. |
+| **Extra features** | Average roof params, oemof cost/CO2 | — | — |
 
 ---
 

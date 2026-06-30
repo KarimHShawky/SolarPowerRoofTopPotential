@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+*Checkpoint.ipynb
+
+# Data files (large / generated)
+*.nc
+*.tif
+*.tiff
+temp_buildings.tif
+temp_raster.tif
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.venv/
+venv/

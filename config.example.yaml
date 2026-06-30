@@ -23,7 +23,16 @@ data:
 
 parameters:
   year: 2014
-  capacity_density: 19            # MW/km² (use 8 for raster approach)
+  # Geometry mode: set by the notebook you use (raster / lod2 / osm).
+  #   Raster approach: capacity_density = 8 (MW/km² built-up)
+  #   LoD2 approach:   capacity_density = 19 (MW/km² roof area)
+  #   OSM approach:    capacity_density = footprint_to_roof × 200 (computed automatically)
+  capacity_density: 19
+  # OSM building footprint → usable roof correction (OSM mode only).
+  # Derived from LoD2 benchmark: footprint_to_roof = usable_roof_m2 / OSM_footprint_m2
+  # Leeste value ≈ 0.037 (from 3,370 m² usable / 90,836 m² OSM footprints).
+  # Default 1.0 = no correction (conservative upper bound).
+  footprint_to_roof: 1.0
   # Solar thermal model: "atlite" (default, linear Henning & Palzer 2014)
   #                    or "oemof"  (quadratic EN 12975, same as oemof.thermal)
   st_model: "atlite"

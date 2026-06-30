@@ -14,7 +14,7 @@ The ERA5 weather data is obtained from the Copernicus Climate Data Store (CDS). 
 2. Your API key is displayed as `{uid}:{api-key}`
 3. Create the file `~/.cdsapirc` with the following content:
 
-```
+```yaml
 url: https://cds.climate.copernicus.eu/api/v2
 key: {uid}:{api-key}
 ```
@@ -23,7 +23,7 @@ Replace `{uid}:{api-key}` with your credentials.
 
 ### Example `.cdsapirc`
 
-```
+```yaml
 url: https://cds.climate.copernicus.eu/api/v2
 key: 12345:abcdef12-3456-7890-abcd-ef1234567890
 ```

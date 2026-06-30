@@ -45,6 +45,7 @@ class ParametersConfig:
     st_temp_inlet: float = 20.0
     st_delta_temp_n: float = 10.0
     st_pv_power_density: float = 200.0  # W/m², PV panel density for m² ↔ MW conversion
+    footprint_to_roof: float = 1.0  # OSM: fraction of building footprint → usable roof
     pv_type: str = "CdTe"
     hp_type: str = "air_source"
     alpha_values: list[float] = field(
@@ -141,6 +142,8 @@ def load_config(path: str | Path) -> Config:
             cfg.parameters.st_delta_temp_n = p["st_delta_temp_n"]
         if "st_pv_power_density" in p:
             cfg.parameters.st_pv_power_density = p["st_pv_power_density"]
+        if "footprint_to_roof" in p:
+            cfg.parameters.footprint_to_roof = p["footprint_to_roof"]
         if "pv_type" in p:
             cfg.parameters.pv_type = p["pv_type"]
         if "hp_type" in p:
